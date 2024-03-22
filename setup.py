@@ -5,8 +5,8 @@ with open('requirements.txt') as f:
     dependencies = f.read().splitlines()
 
 setup(
-    name='TestLib',
-    version='0.1',
+    name='ApiTools_fsdjfoi_1',
+    version='0.2',
     packages=find_packages(),
     install_requires=dependencies,
     author='Your Name',

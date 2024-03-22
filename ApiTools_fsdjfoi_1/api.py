@@ -7,31 +7,26 @@ import uuid
 from fastapi import UploadFile, File
 from fastapi.responses import JSONResponse
 
-from config import (
+from _config import (
     DIR_IMAGES,
     DIR_RUNS,
     API_SERVER_HOST,
     API_SERVER_PORT,
-    CLASSES,
     FILE_TYPE_GET_IMAGE,
-    MODEL_IMAGE_SIZE,
 )
-from model import Model
 from pillow_custom import PillowTools
 
 
 class APITools:
     def __init__(self):
-        # init yolo model
-        self._model = Model()
-
         # get custom pillow tools
         self._pillow_tools = PillowTools()
 
-    def _input_image_file_crop(self, image_path: str, show_input_scaled_image: bool = False) -> None:
+    def _input_image_file_crop(self, image_path: str, image_size: tuple[int, int],
+                               show_input_scaled_image: bool = False) -> None:
         # get object pillow image
         image = self._pillow_tools.open(image_path)
-        new_image_size = (MODEL_IMAGE_SIZE, MODEL_IMAGE_SIZE)
+        new_image_size = image_size
 
         # get size image
         width, height = image.size
@@ -54,7 +49,8 @@ class APITools:
         if show_input_scaled_image:
             cropped_image.show()
 
-    def _create_image_file(self, input_image: Annotated[UploadFile, File()]) -> Path:  # func create input image
+    def _create_image_file(self, input_image: Annotated[UploadFile, File()],
+                           image_size: tuple[int, int]) -> Path:  # func create input image
         # create directory to input image
         if not os.path.exists(DIR_IMAGES):
             os.mkdir(DIR_IMAGES)
@@ -74,7 +70,7 @@ class APITools:
         os.rename(path_input_image, new_path_image)
 
         # crop input image
-        self._input_image_file_crop(new_path_image)
+        self._input_image_file_crop(new_path_image, image_size)
 
         return Path(new_path_image)
 
@@ -113,7 +109,8 @@ class APITools:
 
         return detections
 
-    async def _get_predict_text(self, image_path: Path) -> str:  # func get predict text
+    async def _get_predict_text(self, image_path: Path,
+                                classes: dict[int, int | str]) -> str:  # func get predict text
         # get paths from "image_path"
         path_parent = str(image_path.parent)
         path_name = image_path.name
@@ -133,7 +130,7 @@ class APITools:
 
             # get classes from predict text data
             for line in data:
-                predict_text += CLASSES[line[0]]
+                predict_text += classes[line[0]]
 
         except FileNotFoundError:
             pass
@@ -141,18 +138,15 @@ class APITools:
         return predict_text
 
     # async func get predict image and predict text
-    async def get_predict(self, image: Annotated[UploadFile, File()]) -> JSONResponse:
-        # create image file from "get image"
-        image_path = self._create_image_file(image)
-
-        # predict "get image"
-        self._model.predict(str(image_path))
+    async def get_predict(self, image: Annotated[UploadFile, File()],
+                          image_size: tuple[int, int], classes: dict[int, int | str]) -> JSONResponse:        # create image file from "get image"
+        image_path = self._create_image_file(image, image_size)
 
         # create path image
         image_path = Path(DIR_RUNS + f"detect/predict/" + Path(image_path).name)
 
         # get predict image and predict text
-        predict_text = await self._get_predict_text(image_path)
+        predict_text = await self._get_predict_text(image_path, classes)
         path_output_image = await self._get_predict_image(image_path)
 
         # create json response
