@@ -5,7 +5,7 @@ with open('requirements.txt') as f:
     dependencies = f.read().splitlines()
 
 setup(
-    name='ApiTools_fsdjfoi_1',
+    name='ApiTools_for_aiyoloAPI',
     version='0.2',
     packages=find_packages(),
     install_requires=dependencies,
